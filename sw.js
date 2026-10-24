@@ -1,9 +1,9 @@
 'use strict';
 importScripts('core.js');
-const CACHE = 'benefits-wallet-v4'; // change this number whenever you update any file
+const CACHE = 'benefits-wallet-v6'; // change this number whenever you update any file
 const FILES = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
-self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(new Request(f, { cache: 'reload' }))))).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {

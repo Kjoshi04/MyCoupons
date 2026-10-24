@@ -3,7 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const dfmt = s => new Date(s + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-const APP_VERSION = 'v4';
+const APP_VERSION = 'v5';
 const LABEL = { available: 'Available', expiring: 'Expiring soon', expired: 'Expired', used: 'Used' };
 let offers = [], settings = { ...DEFAULT_SETTINGS }, editId = null, tt;
 const ui = { status: 'available', q: '', source: '', cat: '', sort: 'expiry' };
@@ -74,9 +74,11 @@ function card(o) {
 function viewHome() {
   const c = { available: count('available'), expiring: count('expiring'), expired: count('expired'), used: count('used') };
   const alerts = offers.filter(o => !o.used && !o.noExpiry && daysLeft(o) >= 0 && effReminders(o, settings).some(n => daysLeft(o) <= n)).sort(byExpiry);
-  const stale = offers.length && (!settings.lastBackup || (Date.now() - Date.parse(settings.lastBackup)) / 864e5 > 30);
+  const lbT = settings.lastBackup ? Date.parse(settings.lastBackup) : 0;
+  const unsaved = offers.filter(o => !o.sample && o.updated > lbT).length;
+  const oldBk = offers.length && lbT && (Date.now() - lbT) / 864e5 > 30;
   return `<h1>Dashboard</h1>
-    ${stale ? `<div class="note warn">${settings.lastBackup ? 'Your last backup is over 30 days old.' : 'You have not made a backup yet.'} <a href="#backup">Back up now</a></div>` : ''}
+    ${unsaved ? `<div class="note warn"><b>${unsaved} offer${unsaved > 1 ? 's are' : ' is'} not backed up yet.</b> ${lbT ? '' : 'You have never made a backup. '}<a href="#backup">Back up now</a></div>` : oldBk ? '<div class="note warn">Your last backup is over 30 days old. <a href="#backup">Back up now</a></div>' : ''}
     <div class="tiles">${['available', 'expiring', 'expired', 'used'].map(k => `<button class="tile ${k}" data-act="goto" data-s="${k}"><b>${c[k]}</b><span>${LABEL[k]}</span></button>`).join('')}</div>
     <p class="hint">“Available” includes offers that are expiring soon.</p>
     ${alerts.length ? `<h2>Needs attention (${alerts.length})</h2>${alerts.map(card).join('')}` : ''}
@@ -147,18 +149,21 @@ function viewBackup() {
   const lb = settings.lastBackup ? new Date(settings.lastBackup).toLocaleString('en-IN', { timeZone: TZ, dateStyle: 'medium', timeStyle: 'short' }) : 'never';
   return `<h1>Backup and restore</h1>
   <section class="panel"><p><b>${offers.length}</b> offer(s) are stored on this phone. Last backup: <b>${esc(lb)}</b>.</p>
-    <div class="stack"><button class="btn" data-act="export">Export backup</button>
-    <button class="btn alt" data-act="share">Share backup (e.g. to Google Drive)</button>
-    <label class="btn alt filebtn">Import backup<input type="file" id="file" aria-label="Choose backup file"></label></div>
-    <details><summary>Import not opening? Paste backup text instead</summary><p class="hint">Open the backup file in Drive or Files, select all, copy, then paste here.</p>
-    <textarea id="paste" rows="4" placeholder="Paste backup text here"></textarea><button class="btn alt" data-act="pastein">Restore from pasted text</button></details></section>
+    <p class="hint">Your offers live only in this browser. Clearing Chrome’s site data deletes them, so keep a backup outside the app.</p></section>
+  <section class="panel"><h2>1. Back up</h2>
+    <div class="stack"><button class="btn" data-act="sharetext">Send backup as text (Gmail, Keep, WhatsApp)</button>
+    <button class="btn alt" data-act="copytext">Copy backup text</button>
+    <button class="btn alt" data-act="export">Download backup file</button>
+    <button class="btn alt" data-act="share">Share backup file (e.g. Google Drive)</button></div>
+    <details><summary>Where should I send it?</summary><p>Best: email it to yourself in Gmail, or save it as a note in Google Keep. Both sync with your Google account, so the backup survives even if you lose the phone. Search your email for “My Benefits Wallet backup” when you need it.</p></details></section>
+  <section class="panel"><h2>2. Restore</h2>
+    <label>Paste backup text<textarea id="paste" rows="4" placeholder="Paste the backup text here"></textarea></label>
+    <button class="btn" data-act="pastein">Restore from pasted text</button>
+    <p class="hint">Or restore from a file:</p>
+    <label class="btn alt filebtn">Choose backup file<input type="file" id="file" aria-label="Choose backup file"></label></section>
   <section class="panel"><h2>Test the backup</h2><p class="hint">Checks that your current data can be exported and read back without losing anything. It does not change your data.</p>
     <button class="btn alt" data-act="selftest">Run backup self-test</button></section>
-  <section class="panel"><h2>Google Drive and new phones</h2>
-    <details><summary>Save a backup to Google Drive</summary><p>Tap “Share backup”, choose Drive, pick a folder. Or tap “Export backup”, then open Files by Google → Downloads, tap the file’s ⋮ menu → Send/Share → Drive.</p></details>
-    <details><summary>Restore after changing phones or losing data</summary><p>Open the app’s web address in Chrome and install it. Go to Backup → Import backup, pick the .json file (the file picker can browse Google Drive), then choose Merge or Replace.</p></details>
-    <p class="hint">App version: ${APP_VERSION}</p>
-    <details><summary>Why backups matter</summary><p>Offers live only inside this phone’s browser storage. Clearing Chrome’s site data, uninstalling the app, or switching phones can erase them. Back up often.</p></details></section>`;
+  <p class="hint">App version: ${APP_VERSION}</p>`;
 }
 async function importFile(file, input) {
   if (!file) return;
@@ -286,7 +291,14 @@ document.addEventListener('click', async e => {
         else toast('Sharing files is not supported here. Use Export backup instead.', true);
         break;
       }
-      case 'pastein': { const t = $('#paste').value.trim(); if (!t) { toast('Paste the backup text first.', true); break; } await importText(t); break; }
+      case 'pastein': { const raw = $('#paste').value, i = raw.indexOf('{'), j = raw.lastIndexOf('}'), t = i >= 0 && j > i ? raw.slice(i, j + 1) : raw.trim(); if (!t) { toast('Paste the backup text first.', true); break; } await importText(t); break; }
+      case 'copytext': await copyText(JSON.stringify(await buildBackup())); await markBackup(); toast('Backup copied. Paste it into an email to yourself or a Google Keep note.'); break;
+      case 'sharetext': {
+        const t = JSON.stringify(await buildBackup());
+        if (navigator.share) { await navigator.share({ title: 'My Benefits Wallet backup ' + todayISO(), text: t }); await markBackup(); toast('Backup shared. Check that it arrived in Gmail or Keep.'); }
+        else { await copyText(t); await markBackup(); toast('Sharing is not available here, so the backup text was copied. Paste it into a note or email.'); }
+        break;
+      }
       case 'selftest': await selfTest(); break;
       case 'samples': { await putMany(samples(), false); await load(); render(); const n = offers.filter(x => x.sample).length; if (n) toast(n + ' sample offers are in your wallet. Remove them in Settings.'); else toast('Samples were not saved. Please tell me what the browser console says.', true); break; }
       case 'rmsamples': { const ids = offers.filter(x => x.sample).map(x => x.id); await delMany(ids); await load(); render(); toast(ids.length + ' sample offer(s) removed'); break; }
