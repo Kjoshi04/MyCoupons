@@ -1,8 +1,8 @@
 'use strict';
 /* Shared by the page (app.js) and the service worker (sw.js): dates, database, backup rules, reminders. */
 const TZ = 'Asia/Kolkata', DB_NAME = 'benefitsWallet', SOON_DAYS = 7;
-const SOURCES = ['Amazon', 'Flipkart', 'Meesho', 'Bank offer', 'Employer benefit', 'Personify', 'Other'];
-const CATS = ['shopping', 'food', 'travel', 'banking', 'entertainment', 'employer benefits', 'pharmacy', 'jewellery', 'other'];
+const SOURCES = ['Amazon', 'Flipkart', 'Jio', 'Bank offer', 'Employer benefit', 'Personify', 'Other'];
+const CATS = ['shopping', 'food', 'travel', 'entertainment', 'pharmacy', 'jewellery', 'favourites', 'other'];
 const DEFAULT_SETTINGS = { reminders: [7, 3, 1], lastBackup: null };
 
 /* ---------- Dates (all dates are plain "YYYY-MM-DD" text, today is taken in India time) ---------- */
