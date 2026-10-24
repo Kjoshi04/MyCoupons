@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Benefits Wallet</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f766e">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>My Benefits Wallet</header>
+<main id="view" tabindex="-1"><p>Loading…</p></main>
+<nav aria-label="Main">
+  <a href="#home"><i aria-hidden="true">🏠</i>Home</a>
+  <a href="#offers"><i aria-hidden="true">🎫</i>Offers</a>
+  <a href="#add" data-act="new"><i aria-hidden="true">➕</i>Add</a>
+  <a href="#backup"><i aria-hidden="true">💾</i>Backup</a>
+  <a href="#settings"><i aria-hidden="true">⚙️</i>Settings</a>
+</nav>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<noscript>This app needs JavaScript turned on.</noscript>
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
