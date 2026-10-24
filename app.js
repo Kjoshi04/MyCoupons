@@ -148,7 +148,7 @@ function viewBackup() {
   <section class="panel"><p><b>${offers.length}</b> offer(s) are stored on this phone. Last backup: <b>${esc(lb)}</b>.</p>
     <div class="stack"><button class="btn" data-act="export">Export backup</button>
     <button class="btn alt" data-act="share">Share backup (e.g. to Google Drive)</button>
-    <button class="btn alt" data-act="import">Import backup</button><input type="file" id="file" accept=".json,application/json" hidden></div></section>
+    <button class="btn alt" data-act="import">Import backup</button><input type="file" id="file" hidden></div></section>
   <section class="panel"><h2>Test the backup</h2><p class="hint">Checks that your current data can be exported and read back without losing anything. It does not change your data.</p>
     <button class="btn alt" data-act="selftest">Run backup self-test</button></section>
   <section class="panel"><h2>Google Drive and new phones</h2>
@@ -156,10 +156,12 @@ function viewBackup() {
     <details><summary>Restore after changing phones or losing data</summary><p>Open the app’s web address in Chrome and install it. Go to Backup → Import backup, pick the .json file (the file picker can browse Google Drive), then choose Merge or Replace.</p></details>
     <details><summary>Why backups matter</summary><p>Offers live only inside this phone’s browser storage. Clearing Chrome’s site data, uninstalling the app, or switching phones can erase them. Back up often.</p></details></section>`;
 }
-async function importFile(file) {
+async function importFile(file, input) {
   if (!file) return;
   if (file.size > 20e6) { toast('That file is too large to be a backup.', true); return; }
-  let p; try { p = parseBackup(await file.text()); } catch (e) { toast(e.message, true); return; }
+  let p;
+  try { const text = await file.text(); if (input) input.value = ''; p = parseBackup(text); }
+  catch (e) { toast(e.name === 'SyntaxError' || /Backup|backup/.test(e.message) ? e.message : 'Could not read “' + file.name + '”: ' + e.message, true); return; }
   const skip = p.errors.length ? `\n\n${p.errors.length} invalid offer(s) will be skipped:\n${p.errors.slice(0, 4).join('\n')}` : '';
   const ch = await ask('Restore backup', `Found ${p.offers.length} valid offer(s).${skip}\n\nMerge keeps your current offers and adds new ones without duplicates. Replace erases current offers first.`,
     [{ label: 'Cancel', value: null, cls: 'alt' }, { label: 'Merge', value: 'merge' }, { label: 'Replace all', value: 'replace', cls: 'danger' }]);
@@ -300,7 +302,7 @@ document.addEventListener('submit', e => { if (e.target.id === 'form') { e.preve
 document.addEventListener('input', e => { if (e.target.id === 'q') { ui.q = e.target.value; renderList(); } });
 document.addEventListener('change', async e => {
   const t = e.target;
-  if (t.id === 'file') { const f = t.files[0]; t.value = ''; importFile(f); }
+  if (t.id === 'file') { const f = t.files[0]; if (f) { toast('Reading ' + f.name + '…'); importFile(f, t); } }
   else if (t.id === 'src') $('#srcname').hidden = !['Bank offer', 'Other'].includes(t.value);
   else if (t.id === 'noexp') $('#exp').disabled = t.checked;
   else if (t.id === 'fsrc' || t.id === 'fcat' || t.id === 'fsort') { ui[{ fsrc: 'source', fcat: 'cat', fsort: 'sort' }[t.id]] = t.value; renderList(); }
