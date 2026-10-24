@@ -1,6 +1,6 @@
 'use strict';
 importScripts('core.js');
-const CACHE = 'benefits-wallet-v3'; // change this number whenever you update any file
+const CACHE = 'benefits-wallet-v4'; // change this number whenever you update any file
 const FILES = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));

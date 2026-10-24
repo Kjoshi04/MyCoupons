@@ -64,3 +64,5 @@ dialog p{white-space:pre-line}
 #toast{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:20;max-width:480px;margin:0 auto;padding:12px 16px;border-radius:10px;background:var(--tx);color:var(--bg);font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.show{opacity:1}#toast.err{background:var(--bad);color:#fff}
 @media(prefers-reduced-motion:reduce){#toast{transition:none}}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}

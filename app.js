@@ -3,6 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const dfmt = s => new Date(s + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const APP_VERSION = 'v4';
 const LABEL = { available: 'Available', expiring: 'Expiring soon', expired: 'Expired', used: 'Used' };
 let offers = [], settings = { ...DEFAULT_SETTINGS }, editId = null, tt;
 const ui = { status: 'available', q: '', source: '', cat: '', sort: 'expiry' };
@@ -148,20 +149,28 @@ function viewBackup() {
   <section class="panel"><p><b>${offers.length}</b> offer(s) are stored on this phone. Last backup: <b>${esc(lb)}</b>.</p>
     <div class="stack"><button class="btn" data-act="export">Export backup</button>
     <button class="btn alt" data-act="share">Share backup (e.g. to Google Drive)</button>
-    <button class="btn alt" data-act="import">Import backup</button><input type="file" id="file" hidden></div></section>
+    <label class="btn alt filebtn">Import backup<input type="file" id="file" aria-label="Choose backup file"></label></div>
+    <details><summary>Import not opening? Paste backup text instead</summary><p class="hint">Open the backup file in Drive or Files, select all, copy, then paste here.</p>
+    <textarea id="paste" rows="4" placeholder="Paste backup text here"></textarea><button class="btn alt" data-act="pastein">Restore from pasted text</button></details></section>
   <section class="panel"><h2>Test the backup</h2><p class="hint">Checks that your current data can be exported and read back without losing anything. It does not change your data.</p>
     <button class="btn alt" data-act="selftest">Run backup self-test</button></section>
   <section class="panel"><h2>Google Drive and new phones</h2>
     <details><summary>Save a backup to Google Drive</summary><p>Tap “Share backup”, choose Drive, pick a folder. Or tap “Export backup”, then open Files by Google → Downloads, tap the file’s ⋮ menu → Send/Share → Drive.</p></details>
     <details><summary>Restore after changing phones or losing data</summary><p>Open the app’s web address in Chrome and install it. Go to Backup → Import backup, pick the .json file (the file picker can browse Google Drive), then choose Merge or Replace.</p></details>
+    <p class="hint">App version: ${APP_VERSION}</p>
     <details><summary>Why backups matter</summary><p>Offers live only inside this phone’s browser storage. Clearing Chrome’s site data, uninstalling the app, or switching phones can erase them. Back up often.</p></details></section>`;
 }
 async function importFile(file, input) {
   if (!file) return;
   if (file.size > 20e6) { toast('That file is too large to be a backup.', true); return; }
+  let text;
+  try { text = await file.text(); if (input) input.value = ''; }
+  catch (e) { toast('Could not read “' + file.name + '”: ' + e.message, true); return; }
+  return importText(text);
+}
+async function importText(text) {
   let p;
-  try { const text = await file.text(); if (input) input.value = ''; p = parseBackup(text); }
-  catch (e) { toast(e.name === 'SyntaxError' || /Backup|backup/.test(e.message) ? e.message : 'Could not read “' + file.name + '”: ' + e.message, true); return; }
+  try { p = parseBackup(text); } catch (e) { toast(e.message, true); return; }
   const skip = p.errors.length ? `\n\n${p.errors.length} invalid offer(s) will be skipped:\n${p.errors.slice(0, 4).join('\n')}` : '';
   const ch = await ask('Restore backup', `Found ${p.offers.length} valid offer(s).${skip}\n\nMerge keeps your current offers and adds new ones without duplicates. Replace erases current offers first.`,
     [{ label: 'Cancel', value: null, cls: 'alt' }, { label: 'Merge', value: 'merge' }, { label: 'Replace all', value: 'replace', cls: 'danger' }]);
@@ -192,7 +201,7 @@ function viewSettings() {
   <section class="panel"><h2>Guaranteed reminders: Google Calendar</h2>
     <p class="hint">Downloads a .ics file with one all-day event per upcoming reminder. Open it on your phone or laptop to add the events to Google Calendar, which then alerts you even when this app is closed.</p>
     <button class="btn" data-act="calendar">Download calendar file</button></section>
-  <section class="panel"><h2>Storage</h2><p id="sstat" class="hint"></p></section>
+  <section class="panel"><h2>Storage</h2><p id="sstat" class="hint"></p><p class="hint">App version: ${APP_VERSION}</p></section>
   <section class="panel"><h2>Sample data and reset</h2>
     <div class="stack"><button class="btn alt" data-act="samples">Load sample offers</button><button class="btn alt" data-act="rmsamples">Remove sample offers</button>
     <button class="btn danger" data-act="wipe">Delete ALL offers</button></div></section>`;
@@ -277,7 +286,7 @@ document.addEventListener('click', async e => {
         else toast('Sharing files is not supported here. Use Export backup instead.', true);
         break;
       }
-      case 'import': $('#file').click(); break;
+      case 'pastein': { const t = $('#paste').value.trim(); if (!t) { toast('Paste the backup text first.', true); break; } await importText(t); break; }
       case 'selftest': await selfTest(); break;
       case 'samples': { await putMany(samples(), false); await load(); render(); const n = offers.filter(x => x.sample).length; if (n) toast(n + ' sample offers are in your wallet. Remove them in Settings.'); else toast('Samples were not saved. Please tell me what the browser console says.', true); break; }
       case 'rmsamples': { const ids = offers.filter(x => x.sample).map(x => x.id); await delMany(ids); await load(); render(); toast(ids.length + ' sample offer(s) removed'); break; }
