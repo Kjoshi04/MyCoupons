@@ -3,7 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const dfmt = s => new Date(s + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-const APP_VERSION = 'v5';
+const APP_VERSION = 'v8';
 const LABEL = { available: 'Available', expiring: 'Expiring soon', expired: 'Expired', used: 'Used' };
 let offers = [], settings = { ...DEFAULT_SETTINGS }, editId = null, tt;
 const ui = { status: 'available', q: '', source: '', cat: '', sort: 'expiry' };
